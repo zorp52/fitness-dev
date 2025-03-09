@@ -6,7 +6,6 @@ import (
 	"fitness-dev/models"
 )
 
-// GetWorkoutByDay fetches a workout for a specific day.
 func GetWorkoutByDay(db *sql.DB, day string) (models.Workout, error) {
 	query := `SELECT id, day, time_in, time_out, mood_in, mood_out FROM workouts WHERE day = ?`
 	row := db.QueryRow(query, day)
@@ -39,7 +38,6 @@ func GetWorkoutByDay(db *sql.DB, day string) (models.Workout, error) {
 	return workout, nil
 }
 
-// GetWorkoutsByDateRange fetches workouts within a date range.
 func GetWorkoutsByDateRange(db *sql.DB, startDate, endDate string) ([]models.Workout, error) {
 	query := `SELECT id, day, time_in, time_out, mood_in, mood_out FROM workouts WHERE day BETWEEN ? AND ?`
 	rows, err := db.Query(query, startDate, endDate)
@@ -55,7 +53,6 @@ func GetWorkoutsByDateRange(db *sql.DB, startDate, endDate string) ([]models.Wor
 			return nil, fmt.Errorf("failed to scan row: %v", err)
 		}
 
-		// Fetch lifts for this workout
 		liftsQuery := `SELECT name, weight, reps, sets FROM lifts WHERE workout_id = ?`
 		liftsRows, err := db.Query(liftsQuery, workout.ID)
 		if err != nil {

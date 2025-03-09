@@ -48,7 +48,6 @@ func insertMockData(db *sql.DB) {
             workout.Sets[j] = rand.Intn(5) + 1
         }
 
-        // Insert the workout into the database
         if err := database.InsertWorkout(db, workout); err != nil {
             fmt.Printf("Failed to insert workout: %v\n", err)
         }

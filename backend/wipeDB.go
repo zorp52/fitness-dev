@@ -5,7 +5,6 @@ import (
 	"fmt"
 )
 
-// WipeDB deletes all data from the database
 func WipeDB(db *sql.DB) error {
 	queries := []string{
 		`DELETE FROM workouts`,
