@@ -64,6 +64,14 @@ func startServer(db *sql.DB) {
 	// http://localhost:8080/frontend/index.html will serve fitness-dev/frontend/index.html
 	// http://localhost:8080/frontend/style.css will serve fitness-dev/frontend/style.css
 
+	/*
+	router.GET("/", func(c *gin.Context) {
+    		c.File("./fitness-dev/frontend/index.html")
+	})	
+	
+ 	^ once we have an index uncomment this :)
+	*/
+
 	// API routes
 	router.POST("/workouts", api.CreateWorkoutHandler(db))         // Create a new workout
 	router.GET("/workouts/:day", api.GetWorkoutByDayHandler(db))   // Fetch workout by day
