@@ -1,4 +1,4 @@
-package database
+package backend
 
 import (
 	"database/sql"
@@ -6,7 +6,35 @@ import (
 	"fitness-dev/models"
 )
 
-// validateWorkoutForInsert ensures all required fields are provided for an insert.
+func executeInTransaction(db *sql.DB, fn func(tx *sql.Tx) error) error {
+	// Start transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %v", err)
+	}
+
+	// Rollback transaction if error
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				fmt.Printf("Failed to rollback transaction: %v\n", rbErr)
+			}
+		}
+	}()
+
+	// Execute the function
+	if err := fn(tx); err != nil {
+		return err
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return nil
+}
+
 func validateWorkoutForInsert(workout models.Workout) error {
 	if workout.Date == "" {
 		return fmt.Errorf("date is required")
@@ -30,26 +58,22 @@ func validateWorkoutForInsert(workout models.Workout) error {
 }
 
 func InsertWorkout(db *sql.DB, workout models.Workout) error {
-	// Validate the workout
 	if err := validateWorkoutForInsert(workout); err != nil {
 		return err
 	}
 
 	return executeInTransaction(db, func(tx *sql.Tx) error {
-		// Insert the workout session
 		workoutQuery := `INSERT INTO workouts (day, time_in, time_out, mood_in, mood_out) VALUES (?, ?, ?, ?, ?)`
 		result, err := tx.Exec(workoutQuery, workout.Date, workout.TimeIn, workout.TimeOut, workout.MoodIn, workout.MoodOut)
 		if err != nil {
 			return fmt.Errorf("failed to insert workout: %v", err)
 		}
 
-		// Retrieve the workout ID
 		workoutID, err := result.LastInsertId()
 		if err != nil {
 			return fmt.Errorf("failed to retrieve workout ID: %v", err)
 		}
 
-		// Insert the lifts
 		liftQuery := `INSERT INTO lifts (workout_id, name, weight, reps, sets) VALUES (?, ?, ?, ?, ?)`
 		for i := 0; i < len(workout.Lifts); i++ {
 			_, err = tx.Exec(liftQuery, workoutID, workout.Lifts[i], workout.Weight[i], workout.Reps[i], workout.Sets[i])
@@ -64,7 +88,6 @@ func InsertWorkout(db *sql.DB, workout models.Workout) error {
 
 func UpdateWorkout(db *sql.DB, workout models.Workout) error {
 	return executeInTransaction(db, func(tx *sql.Tx) error {
-		// Build the dynamic update query for workouts
 		workoutQuery := `UPDATE workouts SET `
 		var args []interface{}
 		if workout.Date != "" {
@@ -90,27 +113,21 @@ func UpdateWorkout(db *sql.DB, workout models.Workout) error {
 
 		// Remove the trailing comma and space
 		workoutQuery = workoutQuery[:len(workoutQuery)-2]
-
-		// Add the WHERE clause
 		workoutQuery += ` WHERE id = ?`
 		args = append(args, workout.ID)
 
-		// Execute the workout update
 		_, err := tx.Exec(workoutQuery, args...)
 		if err != nil {
 			return fmt.Errorf("failed to update workout: %v", err)
 		}
 
-		// Update lifts if provided
 		if len(workout.Lifts) > 0 {
-			// Delete existing lifts for the workout
 			liftDeleteQuery := `DELETE FROM lifts WHERE workout_id = ?`
 			_, err = tx.Exec(liftDeleteQuery, workout.ID)
 			if err != nil {
 				return fmt.Errorf("failed to delete lifts: %v", err)
 			}
 
-			// Insert the updated lifts
 			liftQuery := `INSERT INTO lifts (workout_id, name, weight, reps, sets) VALUES (?, ?, ?, ?, ?)`
 			for i := 0; i < len(workout.Lifts); i++ {
 				_, err = tx.Exec(liftQuery, workout.ID, workout.Lifts[i], workout.Weight[i], workout.Reps[i], workout.Sets[i])
@@ -124,7 +141,7 @@ func UpdateWorkout(db *sql.DB, workout models.Workout) error {
 	})
 }
 
-func DeleteWorkout(db *sql.DB, workoutID int64) error {
+func DeleteWorkout(db *sql.DB, workoutID int) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %v", err)

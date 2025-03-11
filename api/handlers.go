@@ -2,7 +2,10 @@ package api
 
 import (
 	"net/http"
-	"fitness-dev/database"
+	"database/sql"
+	"strconv"
+
+	"fitness-dev/backend"
 	"fitness-dev/models"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +19,7 @@ func CreateWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := database.InsertWorkout(db, workout); err != nil {
+		if err := backend.InsertWorkout(db, workout); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -28,7 +31,7 @@ func CreateWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 func GetWorkoutByDayHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		day := c.Param("day")
-		workout, err := database.GetWorkoutByDay(db, day)
+		workout, err := backend.GetWorkoutByDay(db, day)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -48,7 +51,7 @@ func GetWorkoutsByDateRangeHandler(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		workouts, err := database.GetWorkoutsByDateRange(db, startDate, endDate)
+		workouts, err := backend.GetWorkoutsByDateRange(db, startDate, endDate)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -60,7 +63,14 @@ func GetWorkoutsByDateRangeHandler(db *sql.DB) gin.HandlerFunc {
 
 func UpdateWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
+
+		// Get workoutID(str) -> workoutID(int)
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workout ID"})
+			return
+		}
 
 		var workout models.Workout
 		if err := c.ShouldBindJSON(&workout); err != nil {
@@ -68,8 +78,8 @@ func UpdateWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		workout.ID = id // Set the workout ID from the URL parameter
-		if err := database.UpdateWorkout(db, workout); err != nil {
+		workout.ID = id
+		if err := backend.UpdateWorkout(db, workout); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -80,9 +90,14 @@ func UpdateWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 
 func DeleteWorkoutHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workout ID"})
+			return
+		}
 
-		if err := database.DeleteWorkout(db, id); err != nil {
+		if err := backend.DeleteWorkout(db, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
